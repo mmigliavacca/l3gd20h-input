@@ -662,8 +662,8 @@ static int l3gd20h_gyr_update_odr(struct l3gd20h_gyr_status *stat,
 		if (err < 0)
 			return err;
 		stat->resume_state[RES_CTRL_REG1] = config[1];
+		stat->ktime = ktime_set(0, MS_TO_NS(poll_interval_ms));
 	}
-	stat->ktime = ktime_set(0, MS_TO_NS(poll_interval_ms));
 
 	return err;
 }
@@ -1680,7 +1680,6 @@ static int l3gd20h_gyr_remove(struct i2c_client *client)
 
 	dev_info(&stat->client->dev, "driver removing\n");
 
-	hrtimer_cancel(&stat->hr_timer);
 	cancel_work_sync(&stat->polling_task);
 	if(!l3gd20h_gyr_workqueue) {
 		flush_workqueue(l3gd20h_gyr_workqueue);
@@ -1699,9 +1698,6 @@ static int l3gd20h_gyr_remove(struct i2c_client *client)
 		gpio_free(stat->pdata->gpio_int2);
 		destroy_workqueue(stat->irq2_work_queue);
 	}
-
-	if (atomic_cmpxchg(&stat->enabled, 1, 0))
-		hrtimer_cancel(&stat->hr_timer);
 
 	l3gd20h_gyr_disable(stat);
 	l3gd20h_gyr_input_cleanup(stat);
